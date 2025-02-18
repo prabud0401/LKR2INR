@@ -123,7 +123,7 @@
   </div>
 
   <script>
-    // Update current exchange rates on page load
+    // Function to update current exchange rates on page load
     async function updateCurrentRates() {
       try {
         const response = await fetch('https://api.exchangerate-api.com/v4/latest/LKR');
@@ -152,9 +152,17 @@
         return;
       }
 
+      // Disable button and show spinner
       convertBtn.disabled = true;
-      convertBtn.innerHTML = 'Calculating...';
-
+      convertBtn.innerHTML = `<svg class="animate-spin h-5 w-5 inline-block mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                                </svg> Calculating...`;
+      
+      // Start both the conversion process and a fixed 3-second delay
+      const delayPromise = new Promise(resolve => setTimeout(resolve, 3000));
+      
+      let conversionData = {};
       try {
         const response = await fetch('https://api.exchangerate-api.com/v4/latest/LKR');
         const data = await response.json();
@@ -165,57 +173,64 @@
           const convertedINR = lkrAmount * exchangeRate;
           const taxINR = convertedINR * taxRate;
           const taxLKR = lkrAmount * taxRate;
-          
           const netLKR = lkrAmount - taxLKR;
           const netINR = convertedINR - taxINR;
           
-          // Total deductions equal the gross amounts (Account Deduction + Tax)
-          const totalDeductionINR = convertedINR;
-          const totalDeductionLKR = lkrAmount;
-          
-          document.getElementById('exchangeRate').textContent = `1 LKR = ${exchangeRate.toFixed(4)} INR`;
-          document.getElementById('convertedAmount').textContent = `₹${netINR.toFixed(2)}`;
-          
-          document.getElementById('taxInINR').textContent = `₹${taxINR.toFixed(2)}`;
-          document.getElementById('taxInLKR').textContent = `Rs.${taxLKR.toFixed(2)}`;
-          document.getElementById('totalDeductionINR').textContent = `₹${totalDeductionINR.toFixed(2)}`;
-          document.getElementById('totalDeductionLKR').textContent = `Rs.${totalDeductionLKR.toFixed(2)}`;
-          
-          document.getElementById('netLKR').textContent = `Rs.${netLKR.toFixed(2)}`;
-          document.getElementById('netINR').textContent = `₹${netINR.toFixed(2)}`;
+          conversionData = {
+            exchangeRateText: `1 LKR = ${exchangeRate.toFixed(4)} INR`,
+            convertedAmountText: `₹${netINR.toFixed(2)}`,
+            taxInINRText: `₹${taxINR.toFixed(2)}`,
+            taxInLKRText: `Rs.${taxLKR.toFixed(2)}`,
+            totalDeductionINRText: `₹${convertedINR.toFixed(2)}`,
+            totalDeductionLKRText: `Rs.${lkrAmount.toFixed(2)}`,
+            netLKRText: `Rs.${netLKR.toFixed(2)}`,
+            netINRText: `₹${netINR.toFixed(2)}`
+          };
         } else {
           // INR to LKR Conversion (Net INR desired is entered)
           const netINR = inrAmount;
           const grossINR = netINR / (1 - taxRate);
           const taxINR = grossINR - netINR;
-          
-          // Convert gross INR amount to LKR
           const grossLKR = grossINR / exchangeRate;
           const taxLKR = grossLKR * taxRate;
           const netLKR = grossLKR - taxLKR;
           
-          document.getElementById('exchangeRate').textContent = `1 INR = ${(1 / exchangeRate).toFixed(4)} LKR`;
-          document.getElementById('convertedAmount').textContent = `Gross INR: ₹${grossINR.toFixed(2)} (Net: ₹${netINR.toFixed(2)})`;
-          
-          document.getElementById('taxInINR').textContent = `₹${taxINR.toFixed(2)}`;
-          document.getElementById('taxInLKR').textContent = `Rs.${taxLKR.toFixed(2)}`;
-          // Total deductions are the gross amounts before tax
-          document.getElementById('totalDeductionINR').textContent = `₹${grossINR.toFixed(2)}`;
-          document.getElementById('totalDeductionLKR').textContent = `Rs.${grossLKR.toFixed(2)}`;
-          
-          document.getElementById('netINR').textContent = `₹${netINR.toFixed(2)}`;
-          document.getElementById('netLKR').textContent = `Rs.${netLKR.toFixed(2)}`;
+          conversionData = {
+            exchangeRateText: `1 INR = ${(1 / exchangeRate).toFixed(4)} LKR`,
+            convertedAmountText: `Gross INR: ₹${grossINR.toFixed(2)} (Net: ₹${netINR.toFixed(2)})`,
+            taxInINRText: `₹${taxINR.toFixed(2)}`,
+            taxInLKRText: `Rs.${taxLKR.toFixed(2)}`,
+            totalDeductionINRText: `₹${grossINR.toFixed(2)}`,
+            totalDeductionLKRText: `Rs.${grossLKR.toFixed(2)}`,
+            netINRText: `₹${netINR.toFixed(2)}`,
+            netLKRText: `Rs.${netLKR.toFixed(2)}`
+          };
         }
-
-        document.getElementById('results').classList.remove('hidden');
       } catch (error) {
         alert('Error fetching exchange rate. Please try again later.');
         console.error('Error:', error);
-      } finally {
-        convertBtn.disabled = false;
-        convertBtn.innerHTML = 'Calculate Conversion';
-        updateCurrentRates(); // Refresh top rates after conversion
       }
+
+      // Wait until at least 3 seconds have passed
+      await delayPromise;
+
+      // Update UI with conversion results
+      document.getElementById('exchangeRate').textContent = conversionData.exchangeRateText || '';
+      document.getElementById('convertedAmount').textContent = conversionData.convertedAmountText || '';
+      document.getElementById('taxInINR').textContent = conversionData.taxInINRText || '';
+      document.getElementById('taxInLKR').textContent = conversionData.taxInLKRText || '';
+      document.getElementById('totalDeductionINR').textContent = conversionData.totalDeductionINRText || '';
+      document.getElementById('totalDeductionLKR').textContent = conversionData.totalDeductionLKRText || '';
+      document.getElementById('netINR').textContent = conversionData.netINRText || '';
+      document.getElementById('netLKR').textContent = conversionData.netLKRText || '';
+      document.getElementById('results').classList.remove('hidden');
+      
+      // Reset button
+      convertBtn.disabled = false;
+      convertBtn.innerHTML = 'Calculate Conversion';
+      
+      // Refresh current exchange rates
+      updateCurrentRates();
     });
 
     // Clear the other input when one is changed
